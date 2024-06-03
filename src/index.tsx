@@ -12,20 +12,6 @@ export const createSignal = <T extends unknown>(
   initialValue: T
 ): Signal<T> => {
   const listeners = new Set<() => void>();
-  const isObject =
-    typeof initialValue === "object" &&
-    initialValue !== null &&
-    !Array.isArray(initialValue);
-  if (isObject) {
-    for (const key in initialValue) {
-      if (
-        Object.prototype.hasOwnProperty.call(initialValue, key)
-      ) {
-        // @ts-ignore
-        initialValue[key] = createSignal(initialValue[key]);
-      }
-    }
-  }
   return new Proxy(
     {
       value: initialValue,

@@ -12,17 +12,6 @@ const react_1 = require("react");
  */
 const createSignal = (initialValue) => {
     const listeners = new Set();
-    const isObject = typeof initialValue === "object" &&
-        initialValue !== null &&
-        !Array.isArray(initialValue);
-    if (isObject) {
-        for (const key in initialValue) {
-            if (Object.prototype.hasOwnProperty.call(initialValue, key)) {
-                // @ts-ignore
-                initialValue[key] = (0, exports.createSignal)(initialValue[key]);
-            }
-        }
-    }
     return new Proxy({
         value: initialValue,
         subscribe: (callback) => {
