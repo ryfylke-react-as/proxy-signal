@@ -1,0 +1,33 @@
+{
+  "name": "@ryfylke-react/proxy-signal",
+  "version": "1.0.0",
+  "description": "Simple reactive signals for React",
+  "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean",
+    "preversion": "npm run build",
+    "version": "npm publish",
+    "postversion": "git push --follow-tags"
+  },
+  "author": "Ryfylke React AS",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "react": "^18.0.2",
+    "rimraf": "^5.0.5"
+  }
+}
