@@ -113,25 +113,29 @@ function useSignalEffect(callback) {
         callback();
         isRunningEffect = false;
         dependencies.current = Array.from(effectDependencies);
+        prevValues.current = new Map(dependencies.current.map((signal) => {
+            return [signal, signal.value];
+        }));
         Object.freeze(dependencies.current);
         effectDependencies.clear();
     }
-    const commonSubscribe = (cb) => {
+    const commonSubscribe = (0, react_1.useCallback)((cb) => {
         const unsubscribes = dependencies.current.map((signal) => {
             return signal.subscribe(cb);
         });
         return () => {
             unsubscribes.forEach((unsubscribe) => unsubscribe());
         };
-    };
+    }, []);
     (0, react_1.useSyncExternalStore)(commonSubscribe, () => {
-        if ([...effectDependencies].some((signal) => {
+        if (dependencies.current.some((signal) => {
             return prevValues.current.get(signal) !== signal.value;
         })) {
+            renderCount.current += 1;
             callback();
         }
         prevValues.current = new Map(dependencies.current.map((signal) => {
-            return [signal, signal.value];
+            return [signal, structuredClone(signal.value)];
         }));
         return false;
     });
