@@ -1,9 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useSyncExternalStore,
-} from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 
 export type Signal<T> = {
   value: T;
@@ -145,58 +140,8 @@ export function signalEffect(callback: () => void) {
  * Subscribes to all signals used in the callback and re-runs the callback when any of the signals change.s
  * @beta This is an experimental API.
  */
-export function useSignalEffect_V2(
-  callback: () => void | (() => void)
-) {
-  return useEffect(signalEffect(callback), []);
-}
-
-/**
- * Subscribes to all signals used in the callback and re-runs the callback when any of the signals change.s
- * @beta This is an experimental API.
- */
 export function useSignalEffect(
   callback: () => void | (() => void)
 ) {
-  const renderCount = useRef(0);
-  const dependencies = useRef<Signal<unknown>[]>([]);
-  const prevValues = useRef(new Map<Signal<unknown>, unknown>());
-  renderCount.current += 1;
-  if (renderCount.current === 1) {
-    dependencies.current = getDependenciesFromEffect(callback);
-    prevValues.current = new Map(
-      dependencies.current.map((signal) => {
-        return [signal, signal.value];
-      })
-    );
-    Object.freeze(dependencies.current);
-    effectDependencies.clear();
-  }
-
-  const commonSubscribe = useCallback((cb: () => void) => {
-    const unsubscribes = dependencies.current.map((signal) => {
-      return signal.subscribe(cb);
-    });
-    return () => {
-      unsubscribes.forEach((unsubscribe) => unsubscribe());
-    };
-  }, []);
-
-  useSyncExternalStore(commonSubscribe, () => {
-    if (
-      dependencies.current.some((signal) => {
-        return prevValues.current.get(signal) !== signal.value;
-      })
-    ) {
-      renderCount.current += 1;
-      callback();
-    }
-
-    prevValues.current = new Map(
-      dependencies.current.map((signal) => {
-        return [signal, structuredClone(signal.value)];
-      })
-    );
-    return false;
-  });
+  return useEffect(() => signalEffect(callback), []);
 }
