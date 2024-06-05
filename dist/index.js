@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.useSignalEffect = exports.useSignalEffect_V2 = exports.signalEffect = exports.useComputed = exports.useSignal = exports.createSignal = void 0;
+exports.useSignalEffect = exports.signalEffect = exports.useComputed = exports.useSignal = exports.createSignal = void 0;
 const react_1 = require("react");
 const store = new Map();
 let isRunningEffect = false;
@@ -125,46 +125,7 @@ exports.signalEffect = signalEffect;
  * Subscribes to all signals used in the callback and re-runs the callback when any of the signals change.s
  * @beta This is an experimental API.
  */
-function useSignalEffect_V2(callback) {
-    return (0, react_1.useEffect)(signalEffect(callback), []);
-}
-exports.useSignalEffect_V2 = useSignalEffect_V2;
-/**
- * Subscribes to all signals used in the callback and re-runs the callback when any of the signals change.s
- * @beta This is an experimental API.
- */
 function useSignalEffect(callback) {
-    const renderCount = (0, react_1.useRef)(0);
-    const dependencies = (0, react_1.useRef)([]);
-    const prevValues = (0, react_1.useRef)(new Map());
-    renderCount.current += 1;
-    if (renderCount.current === 1) {
-        dependencies.current = getDependenciesFromEffect(callback);
-        prevValues.current = new Map(dependencies.current.map((signal) => {
-            return [signal, signal.value];
-        }));
-        Object.freeze(dependencies.current);
-        effectDependencies.clear();
-    }
-    const commonSubscribe = (0, react_1.useCallback)((cb) => {
-        const unsubscribes = dependencies.current.map((signal) => {
-            return signal.subscribe(cb);
-        });
-        return () => {
-            unsubscribes.forEach((unsubscribe) => unsubscribe());
-        };
-    }, []);
-    (0, react_1.useSyncExternalStore)(commonSubscribe, () => {
-        if (dependencies.current.some((signal) => {
-            return prevValues.current.get(signal) !== signal.value;
-        })) {
-            renderCount.current += 1;
-            callback();
-        }
-        prevValues.current = new Map(dependencies.current.map((signal) => {
-            return [signal, structuredClone(signal.value)];
-        }));
-        return false;
-    });
+    return (0, react_1.useEffect)(() => signalEffect(callback), []);
 }
 exports.useSignalEffect = useSignalEffect;

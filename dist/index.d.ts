@@ -49,9 +49,4 @@ export declare function signalEffect(callback: () => void): () => void;
  * Subscribes to all signals used in the callback and re-runs the callback when any of the signals change.s
  * @beta This is an experimental API.
  */
-export declare function useSignalEffect_V2(callback: () => void | (() => void)): void;
-/**
- * Subscribes to all signals used in the callback and re-runs the callback when any of the signals change.s
- * @beta This is an experimental API.
- */
 export declare function useSignalEffect(callback: () => void | (() => void)): void;
