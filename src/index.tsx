@@ -131,9 +131,9 @@ export function useSignalEffect(
     effectDependencies.clear();
   }
 
-  const commonSubscribe = () => {
+  const commonSubscribe = (callback: () => void) => {
     const unsubscribes = dependencies.current.map((signal) => {
-      return signal.subscribe(() => {});
+      return signal.subscribe(callback);
     });
     return () => {
       unsubscribes.forEach((unsubscribe) => unsubscribe());
