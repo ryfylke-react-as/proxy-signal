@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.useSignalEffect = exports.useComputed = exports.useSignal = exports.createSignal = void 0;
+exports.useSignalEffect = exports.useSignalEffect_V2 = exports.signalEffect = exports.useComputed = exports.useSignal = exports.createSignal = void 0;
 const react_1 = require("react");
 const store = new Map();
 let isRunningEffect = false;
@@ -99,6 +99,36 @@ function useComputed(signal, getComputed) {
     return getComputed(signal.value);
 }
 exports.useComputed = useComputed;
+function getDependenciesFromEffect(callback) {
+    isRunningEffect = true;
+    callback();
+    isRunningEffect = false;
+    const deps = Array.from(effectDependencies);
+    effectDependencies.clear();
+    return deps;
+}
+/**
+ * Runs effect once initially, and re-runs the effect when any of the signals accessed in the effect change.
+ * > **Warning:** Conditionally accessing signals in the effect will not work as expected.
+ * @param callback The effect to run.
+ * @returns A function to unsubscribe the effect.
+ */
+function signalEffect(callback) {
+    const dependencies = getDependenciesFromEffect(callback);
+    const unsubscribes = dependencies.map((signal) => signal.subscribe(callback));
+    return () => {
+        unsubscribes.forEach((unsubscribe) => unsubscribe());
+    };
+}
+exports.signalEffect = signalEffect;
+/**
+ * Subscribes to all signals used in the callback and re-runs the callback when any of the signals change.s
+ * @beta This is an experimental API.
+ */
+function useSignalEffect_V2(callback) {
+    return (0, react_1.useEffect)(signalEffect(callback), []);
+}
+exports.useSignalEffect_V2 = useSignalEffect_V2;
 /**
  * Subscribes to all signals used in the callback and re-runs the callback when any of the signals change.s
  * @beta This is an experimental API.
@@ -109,10 +139,7 @@ function useSignalEffect(callback) {
     const prevValues = (0, react_1.useRef)(new Map());
     renderCount.current += 1;
     if (renderCount.current === 1) {
-        isRunningEffect = true;
-        callback();
-        isRunningEffect = false;
-        dependencies.current = Array.from(effectDependencies);
+        dependencies.current = getDependenciesFromEffect(callback);
         prevValues.current = new Map(dependencies.current.map((signal) => {
             return [signal, signal.value];
         }));

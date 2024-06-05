@@ -39,6 +39,18 @@ export declare function useSignal<T>(signal: Signal<T>): Signal<T>;
  */
 export declare function useComputed<T, C>(signal: Signal<T>, getComputed: (signal: T) => C): C;
 /**
+ * Runs effect once initially, and re-runs the effect when any of the signals accessed in the effect change.
+ * > **Warning:** Conditionally accessing signals in the effect will not work as expected.
+ * @param callback The effect to run.
+ * @returns A function to unsubscribe the effect.
+ */
+export declare function signalEffect(callback: () => void): () => void;
+/**
+ * Subscribes to all signals used in the callback and re-runs the callback when any of the signals change.s
+ * @beta This is an experimental API.
+ */
+export declare function useSignalEffect_V2(callback: () => void | (() => void)): void;
+/**
  * Subscribes to all signals used in the callback and re-runs the callback when any of the signals change.s
  * @beta This is an experimental API.
  */

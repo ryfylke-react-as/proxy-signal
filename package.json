@@ -1,6 +1,6 @@
 {
   "name": "@ryfylke-react/proxy-signal",
-  "version": "1.0.34",
+  "version": "1.0.35",
   "description": "Simple reactive signals for React",
   "main": "dist/index.js",
   "exports": {
