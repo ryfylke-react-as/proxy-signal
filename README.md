@@ -44,11 +44,7 @@ export function CounterButton() {
   return (
     <button
       onClick={() => {
-        // Should be a new reference when signal is an object
-        state.value = {
-          ...state.value,
-          count: count + 1,
-        };
+        state.value.count += 1;
       }}
     >
       {count}
