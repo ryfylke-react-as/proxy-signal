@@ -5,6 +5,28 @@ const react_1 = require("react");
 const store = new Map();
 let isRunningEffect = false;
 const effectDependencies = new Set();
+function recursiveProxy(obj, callback) {
+    const parsed = Object.keys(obj).reduce((acc, key) => {
+        if (typeof obj[key] === "object" &&
+            obj[key] !== null &&
+            !Array.isArray(obj[key])) {
+            // @ts-ignore
+            acc[key] = recursiveProxy(obj[key], callback);
+        }
+        else {
+            // @ts-ignore
+            acc[key] = obj[key];
+        }
+        return acc;
+    }, {});
+    return new Proxy(parsed, {
+        set(target, prop, value) {
+            target[prop] = value;
+            callback();
+            return true;
+        },
+    });
+}
 /**
  * Creates a signal object.
  * @param initialValue The initial value of the signal. (`T`)
@@ -15,6 +37,14 @@ const effectDependencies = new Set();
  */
 const createSignal = (initialValue) => {
     const listeners = new Set();
+    const notifyListeners = () => {
+        listeners.forEach((cb) => cb());
+    };
+    if (typeof initialValue === "object" &&
+        initialValue !== null &&
+        !Array.isArray(initialValue)) {
+        initialValue = recursiveProxy(initialValue, notifyListeners);
+    }
     const signal = new Proxy({
         value: initialValue,
         subscribe: (callback) => {
@@ -33,7 +63,7 @@ const createSignal = (initialValue) => {
         set(target, prop, newValue) {
             if (prop === "value") {
                 target[prop] = newValue;
-                listeners.forEach((cb) => cb());
+                notifyListeners();
                 return true;
             }
             else {
@@ -85,12 +115,13 @@ exports.useSignal = useSignal;
  * @returns `C` (computed value)
  */
 function useComputed(signal, getComputed) {
-    const prevValue = (0, react_1.useRef)(signal.value);
+    const prevValue = (0, react_1.useRef)();
     const renderCount = (0, react_1.useRef)(0);
     (0, react_1.useSyncExternalStore)(signal.subscribe, () => {
-        const isEqual = getComputed(signal.value) ===
-            getComputed(prevValue.current);
-        prevValue.current = signal.value;
+        const currentValue = getComputed(signal.value);
+        const prev = prevValue.current;
+        const isEqual = currentValue === prev;
+        prevValue.current = currentValue;
         if (!isEqual) {
             renderCount.current += 1;
         }

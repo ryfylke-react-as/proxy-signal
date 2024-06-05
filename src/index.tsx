@@ -9,6 +9,33 @@ const store = new Map<Signal<unknown>, Set<() => void>>();
 let isRunningEffect = false;
 const effectDependencies = new Set<Signal<unknown>>();
 
+function recursiveProxy<T extends object>(
+  obj: T,
+  callback: () => void
+): T {
+  const parsed = Object.keys(obj).reduce((acc, key) => {
+    if (
+      typeof obj[key as keyof T] === "object" &&
+      obj[key as keyof T] !== null &&
+      !Array.isArray(obj[key as keyof T])
+    ) {
+      // @ts-ignore
+      acc[key] = recursiveProxy(obj[key], callback);
+    } else {
+      // @ts-ignore
+      acc[key] = obj[key];
+    }
+    return acc;
+  }, {} as T);
+  return new Proxy(parsed, {
+    set(target, prop, value) {
+      target[prop as keyof typeof target] = value;
+      callback();
+      return true;
+    },
+  });
+}
+
 /**
  * Creates a signal object.
  * @param initialValue The initial value of the signal. (`T`)
@@ -21,6 +48,22 @@ export const createSignal = <T extends unknown>(
   initialValue: T
 ): Signal<T> => {
   const listeners = new Set<() => void>();
+
+  const notifyListeners = () => {
+    listeners.forEach((cb) => cb());
+  };
+
+  if (
+    typeof initialValue === "object" &&
+    initialValue !== null &&
+    !Array.isArray(initialValue)
+  ) {
+    initialValue = recursiveProxy(
+      initialValue,
+      notifyListeners
+    ) as T;
+  }
+
   const signal = new Proxy(
     {
       value: initialValue,
@@ -41,7 +84,7 @@ export const createSignal = <T extends unknown>(
       set(target, prop, newValue) {
         if (prop === "value") {
           target[prop as keyof typeof target] = newValue;
-          listeners.forEach((cb) => cb());
+          notifyListeners();
           return true;
         } else {
           return false;
@@ -96,13 +139,13 @@ export function useComputed<T, C>(
   signal: Signal<T>,
   getComputed: (signal: T) => C
 ) {
-  const prevValue = useRef<T>(signal.value);
+  const prevValue = useRef<C | undefined>();
   const renderCount = useRef(0);
   useSyncExternalStore(signal.subscribe, () => {
-    const isEqual =
-      getComputed(signal.value) ===
-      getComputed(prevValue.current);
-    prevValue.current = signal.value;
+    const currentValue = getComputed(signal.value);
+    const prev = prevValue.current;
+    const isEqual = currentValue === prev;
+    prevValue.current = currentValue;
     if (!isEqual) {
       renderCount.current += 1;
     }
