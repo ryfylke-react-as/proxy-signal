@@ -1,5 +1,14 @@
 import { useRef, useSyncExternalStore } from "react";
 
+export type Signal<T> = {
+  value: T;
+  subscribe: (callback: () => void) => () => void;
+};
+
+const store = new Map<Signal<unknown>, Set<() => void>>();
+let isRunningEffect = false;
+const effectDependencies = new Set<Signal<unknown>>();
+
 /**
  * Creates a signal object.
  * @param initialValue The initial value of the signal. (`T`)
@@ -12,7 +21,7 @@ export const createSignal = <T extends unknown>(
   initialValue: T
 ): Signal<T> => {
   const listeners = new Set<() => void>();
-  return new Proxy(
+  const signal = new Proxy(
     {
       value: initialValue,
       subscribe: (callback: () => void) => {
@@ -24,22 +33,24 @@ export const createSignal = <T extends unknown>(
     },
     {
       get(target, prop) {
-        // @ts-ignore
-        return target[prop];
+        if (prop === "value" && isRunningEffect) {
+          effectDependencies.add(signal);
+        }
+        return target[prop as keyof typeof target];
       },
       set(target, prop, newValue) {
-        // @ts-ignore
-        target[prop] = newValue;
-        listeners.forEach((cb) => cb());
-        return true;
+        if (prop === "value") {
+          target[prop as keyof typeof target] = newValue;
+          listeners.forEach((cb) => cb());
+          return true;
+        } else {
+          return false;
+        }
       },
     }
   );
-};
-
-export type Signal<T> = {
-  value: T;
-  subscribe: (callback: () => void) => () => void;
+  store.set(signal, listeners);
+  return signal;
 };
 
 /**
@@ -98,4 +109,40 @@ export function useComputed<T, C>(
     return renderCount.current;
   });
   return getComputed(signal.value);
+}
+
+/**
+ * Subscribes to all signals used in the callback and re-runs the callback when any of the signals change.s
+ * @beta This is an experimental API.
+ */
+export function useSignalEffect(
+  callback: () => void | (() => void)
+) {
+  const renderCount = useRef(0);
+  const dependencies = useRef<Signal<unknown>[]>([]);
+  renderCount.current += 1;
+
+  if (renderCount.current === 1) {
+    isRunningEffect = true;
+    callback();
+    isRunningEffect = false;
+    dependencies.current = Array.from(effectDependencies);
+    Object.freeze(dependencies.current);
+    effectDependencies.clear();
+  }
+
+  const commonSubscribe = () => {
+    const unsubscribes = dependencies.current.map((signal) => {
+      return signal.subscribe(() => {});
+    });
+    return () => {
+      unsubscribes.forEach((unsubscribe) => unsubscribe());
+    };
+  };
+
+  useSyncExternalStore(commonSubscribe, () => {
+    renderCount.current += 1;
+    callback();
+    return false;
+  });
 }

@@ -1,3 +1,7 @@
+export type Signal<T> = {
+    value: T;
+    subscribe: (callback: () => void) => () => void;
+};
 /**
  * Creates a signal object.
  * @param initialValue The initial value of the signal. (`T`)
@@ -7,10 +11,6 @@
  * ```
  */
 export declare const createSignal: <T extends unknown>(initialValue: T) => Signal<T>;
-export type Signal<T> = {
-    value: T;
-    subscribe: (callback: () => void) => () => void;
-};
 /**
  * Hook to subscribe to a signal and re-render when the signal changes.
  * @param signal The signal to subscribe to.
@@ -38,3 +38,8 @@ export declare function useSignal<T>(signal: Signal<T>): Signal<T>;
  * @returns `C` (computed value)
  */
 export declare function useComputed<T, C>(signal: Signal<T>, getComputed: (signal: T) => C): C;
+/**
+ * Subscribes to all signals used in the callback and re-runs the callback when any of the signals change.s
+ * @beta This is an experimental API.
+ */
+export declare function useSignalEffect(callback: () => void | (() => void)): void;

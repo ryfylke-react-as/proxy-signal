@@ -1,7 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.useComputed = exports.useSignal = exports.createSignal = void 0;
+exports.useSignalEffect = exports.useComputed = exports.useSignal = exports.createSignal = void 0;
 const react_1 = require("react");
+const store = new Map();
+let isRunningEffect = false;
+const effectDependencies = new Set();
 /**
  * Creates a signal object.
  * @param initialValue The initial value of the signal. (`T`)
@@ -12,7 +15,7 @@ const react_1 = require("react");
  */
 const createSignal = (initialValue) => {
     const listeners = new Set();
-    return new Proxy({
+    const signal = new Proxy({
         value: initialValue,
         subscribe: (callback) => {
             listeners.add(callback);
@@ -22,16 +25,24 @@ const createSignal = (initialValue) => {
         },
     }, {
         get(target, prop) {
-            // @ts-ignore
+            if (prop === "value" && isRunningEffect) {
+                effectDependencies.add(signal);
+            }
             return target[prop];
         },
         set(target, prop, newValue) {
-            // @ts-ignore
-            target[prop] = newValue;
-            listeners.forEach((cb) => cb());
-            return true;
+            if (prop === "value") {
+                target[prop] = newValue;
+                listeners.forEach((cb) => cb());
+                return true;
+            }
+            else {
+                return false;
+            }
         },
     });
+    store.set(signal, listeners);
+    return signal;
 };
 exports.createSignal = createSignal;
 /**
@@ -88,3 +99,34 @@ function useComputed(signal, getComputed) {
     return getComputed(signal.value);
 }
 exports.useComputed = useComputed;
+/**
+ * Subscribes to all signals used in the callback and re-runs the callback when any of the signals change.s
+ * @beta This is an experimental API.
+ */
+function useSignalEffect(callback) {
+    const renderCount = (0, react_1.useRef)(0);
+    const dependencies = (0, react_1.useRef)([]);
+    renderCount.current += 1;
+    if (renderCount.current === 1) {
+        isRunningEffect = true;
+        callback();
+        isRunningEffect = false;
+        dependencies.current = Array.from(effectDependencies);
+        Object.freeze(dependencies.current);
+        effectDependencies.clear();
+    }
+    const commonSubscribe = () => {
+        const unsubscribes = dependencies.current.map((signal) => {
+            return signal.subscribe(() => { });
+        });
+        return () => {
+            unsubscribes.forEach((unsubscribe) => unsubscribe());
+        };
+    };
+    (0, react_1.useSyncExternalStore)(commonSubscribe, () => {
+        renderCount.current += 1;
+        callback();
+        return false;
+    });
+}
+exports.useSignalEffect = useSignalEffect;
