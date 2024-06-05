@@ -106,6 +106,7 @@ exports.useComputed = useComputed;
 function useSignalEffect(callback) {
     const renderCount = (0, react_1.useRef)(0);
     const dependencies = (0, react_1.useRef)([]);
+    const prevValues = (0, react_1.useRef)(new Map());
     renderCount.current += 1;
     if (renderCount.current === 1) {
         isRunningEffect = true;
@@ -115,17 +116,23 @@ function useSignalEffect(callback) {
         Object.freeze(dependencies.current);
         effectDependencies.clear();
     }
-    const commonSubscribe = (callback) => {
+    const commonSubscribe = (cb) => {
         const unsubscribes = dependencies.current.map((signal) => {
-            return signal.subscribe(callback);
+            return signal.subscribe(cb);
         });
         return () => {
             unsubscribes.forEach((unsubscribe) => unsubscribe());
         };
     };
     (0, react_1.useSyncExternalStore)(commonSubscribe, () => {
-        renderCount.current += 1;
-        callback();
+        if ([...effectDependencies].some((signal) => {
+            return prevValues.current.get(signal) !== signal.value;
+        })) {
+            callback();
+        }
+        prevValues.current = new Map(dependencies.current.map((signal) => {
+            return [signal, signal.value];
+        }));
         return false;
     });
 }

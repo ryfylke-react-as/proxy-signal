@@ -120,6 +120,7 @@ export function useSignalEffect(
 ) {
   const renderCount = useRef(0);
   const dependencies = useRef<Signal<unknown>[]>([]);
+  const prevValues = useRef(new Map<Signal<unknown>, unknown>());
   renderCount.current += 1;
 
   if (renderCount.current === 1) {
@@ -131,9 +132,9 @@ export function useSignalEffect(
     effectDependencies.clear();
   }
 
-  const commonSubscribe = (callback: () => void) => {
+  const commonSubscribe = (cb: () => void) => {
     const unsubscribes = dependencies.current.map((signal) => {
-      return signal.subscribe(callback);
+      return signal.subscribe(cb);
     });
     return () => {
       unsubscribes.forEach((unsubscribe) => unsubscribe());
@@ -141,8 +142,18 @@ export function useSignalEffect(
   };
 
   useSyncExternalStore(commonSubscribe, () => {
-    renderCount.current += 1;
-    callback();
+    if (
+      [...effectDependencies].some((signal) => {
+        return prevValues.current.get(signal) !== signal.value;
+      })
+    ) {
+      callback();
+    }
+    prevValues.current = new Map(
+      dependencies.current.map((signal) => {
+        return [signal, signal.value];
+      })
+    );
     return false;
   });
 }
