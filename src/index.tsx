@@ -1,4 +1,8 @@
-import { useRef, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useRef,
+  useSyncExternalStore,
+} from "react";
 
 export type Signal<T> = {
   value: T;
@@ -122,36 +126,42 @@ export function useSignalEffect(
   const dependencies = useRef<Signal<unknown>[]>([]);
   const prevValues = useRef(new Map<Signal<unknown>, unknown>());
   renderCount.current += 1;
-
   if (renderCount.current === 1) {
     isRunningEffect = true;
     callback();
     isRunningEffect = false;
     dependencies.current = Array.from(effectDependencies);
+    prevValues.current = new Map(
+      dependencies.current.map((signal) => {
+        return [signal, signal.value];
+      })
+    );
     Object.freeze(dependencies.current);
     effectDependencies.clear();
   }
 
-  const commonSubscribe = (cb: () => void) => {
+  const commonSubscribe = useCallback((cb: () => void) => {
     const unsubscribes = dependencies.current.map((signal) => {
       return signal.subscribe(cb);
     });
     return () => {
       unsubscribes.forEach((unsubscribe) => unsubscribe());
     };
-  };
+  }, []);
 
   useSyncExternalStore(commonSubscribe, () => {
     if (
-      [...effectDependencies].some((signal) => {
+      dependencies.current.some((signal) => {
         return prevValues.current.get(signal) !== signal.value;
       })
     ) {
+      renderCount.current += 1;
       callback();
     }
+
     prevValues.current = new Map(
       dependencies.current.map((signal) => {
-        return [signal, signal.value];
+        return [signal, structuredClone(signal.value)];
       })
     );
     return false;
