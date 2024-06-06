@@ -6,6 +6,8 @@
 This was just a fun experiment for javascript proxies and creating a super simple (& naive) state library.
 Use at your own risk.
 
+[Read more about this project](https://www.haakon.dev/article/recreating-signals-for-react-using-proxy).
+
 ## Example
 
 ```tsx
